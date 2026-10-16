@@ -1,0 +1,83 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Admissions{% endblock %} | MyClaSSes Admin</title>
+  <link rel="stylesheet" href="{% static 'admissions/admin.css' %}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="{% url 'home' %}">
+        <span class="brand-mark" aria-hidden="true">M</span>
+        <span class="brand-copy">MyClaSSes <small>ADMISSIONS OFFICE</small></span>
+      </a>
+      {% if user.is_authenticated and user.is_active and user.is_staff and user.is_superuser %}
+        <div class="account">
+          <span class="account-avatar" aria-hidden="true">{{ user.get_username|slice:":1"|upper }}</span>
+          <span class="account-name"><small>Signed in</small>{{ user.get_username }}</span>
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button class="button button-quiet" type="submit">Sign out</button>
+          </form>
+        </div>
+      {% else %}
+        <div class="public-header-actions">
+          <nav class="topbar-nav" aria-label="Main navigation">
+            <a href="{% url 'home' %}#home">Home</a>
+            <a href="{% url 'home' %}#admissions-process">Our approach</a>
+          </nav>
+          {% if user.is_authenticated %}
+            <div class="account">
+              <span>{{ user.get_username }}</span>
+              <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button class="button button-quiet" type="submit">Sign out</button>
+              </form>
+            </div>
+          {% else %}
+            <a class="header-signin" href="{% url 'login' %}">Staff portal <span aria-hidden="true">→</span></a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </header>
+  {% if user.is_authenticated and user.is_active and user.is_staff and user.is_superuser %}
+    <div class="admin-nav-shell">
+      <nav class="admin-nav" aria-label="Admin sections">
+        <a class="{% if request.resolver_match.url_name == 'list' or request.resolver_match.url_name == 'detail' or request.resolver_match.url_name == 'review' %}active{% endif %}" href="{% url 'admissions:list' %}">
+          <span class="admin-nav-icon" aria-hidden="true">A</span><span>Admissions</span>
+        </a>
+        <a class="{% if request.resolver_match.url_name == 'students' %}active{% endif %}" href="{% url 'admissions:students' %}">
+          <span class="admin-nav-icon" aria-hidden="true">S</span><span>Students</span>
+        </a>
+        <a class="{% if request.resolver_match.url_name == 'teachers' %}active{% endif %}" href="{% url 'admissions:teachers' %}">
+          <span class="admin-nav-icon" aria-hidden="true">T</span><span>Teachers</span>
+        </a>
+        <a class="{% if request.resolver_match.url_name == 'create_teacher' %}active{% endif %}" href="{% url 'admissions:create_teacher' %}">
+          <span class="admin-nav-icon" aria-hidden="true">+</span><span>Add teacher</span>
+        </a>
+        <a class="{% if request.resolver_match.url_name == 'assign_teachers' %}active{% endif %}" href="{% url 'admissions:assign_teachers' %}">
+          <span class="admin-nav-icon" aria-hidden="true">A</span><span>Assign sections</span>
+        </a>
+      </nav>
+    </div>
+  {% endif %}
+  <main class="main">
+    {% if messages %}
+      <div class="messages" aria-live="polite">
+        {% for message in messages %}
+          <p class="message {{ message.tags }}">{{ message }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    <span>MyClaSSes <span class="footer-divider">/</span> Admissions Office</span>
+    <span>Supporting every student's next step.</span>
+  </footer>
+</body>
+</html>

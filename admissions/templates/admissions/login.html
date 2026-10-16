@@ -1,0 +1,21 @@
+{% extends "admissions/base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<section class="login-card">
+  <p class="eyebrow">STAFF ACCESS</p>
+  <h1>Sign in to admissions</h1>
+  <p class="muted">Use your Django superuser account. Accounts are created by a server operator; public registration is disabled.</p>
+  {% if form.errors %}
+    <p class="message error" role="alert">Sign-in failed. Check your credentials or contact the system operator.</p>
+  {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <label for="id_username">Username</label>
+    <input id="id_username" name="username" type="text" autocomplete="username" required autofocus>
+    <label for="id_password">Password</label>
+    <input id="id_password" name="password" type="password" autocomplete="current-password" required>
+    <button class="button button-primary button-full" type="submit">Sign in</button>
+  </form>
+</section>
+{% endblock %}

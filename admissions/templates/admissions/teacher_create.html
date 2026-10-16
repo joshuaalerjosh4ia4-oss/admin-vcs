@@ -1,0 +1,24 @@
+{% extends "admissions/base.html" %}
+{% block title %}Create teacher{% endblock %}
+{% block content %}
+<section class="directory-heading">
+  <div>
+    <p class="eyebrow">TEACHER ACCESS</p>
+    <h1>Create teacher account</h1>
+    <p class="muted">The teacher will receive a temporary password by email and must change it after signing in to the mobile app.</p>
+  </div>
+</section>
+<section class="table-card teacher-form">
+  <form method="post" action="{% url 'admissions:create_teacher_submit' %}">
+    {% csrf_token %}
+    <label for="username">Username</label>
+    <input id="username" name="username" minlength="3" maxlength="30" required autocomplete="off">
+    <label for="email">Teacher email</label>
+    <input id="email" name="email" type="email" maxlength="254" required autocomplete="email">
+    <div class="hero-actions" style="margin-top: 24px;">
+      <button class="button button-primary" type="submit">Create and email access</button>
+      <a class="button button-secondary" href="{% url 'admissions:teachers' %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

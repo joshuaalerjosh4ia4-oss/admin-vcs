@@ -1,0 +1,53 @@
+{% extends "admissions/base.html" %}
+{% block title %}Assign teachers{% endblock %}
+{% block content %}
+<div class="directory-heading">
+  <div>
+    <p class="eyebrow">TEACHING ASSIGNMENTS</p>
+    <h1>Assign teachers to sections</h1>
+    <p class="muted">A teacher can schedule rooms only for subjects in sections assigned here.</p>
+  </div>
+  <a class="button button-primary" href="{% url 'admissions:create_teacher' %}">Create teacher account</a>
+</div>
+<section class="table-card directory-table">
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Course section</th><th>Subjects</th><th>Assigned teacher</th></tr></thead>
+      <tbody>
+      {% for section in sections %}
+        <tr>
+          <td>
+            <strong>{{ section.course }} · {{ section.code }}</strong>
+            <small>Year {{ section.yearLevel }} · Semester {{ section.semester }}</small>
+          </td>
+          <td>
+            {% if section.subjects %}
+              <div class="subject-tags">
+                {% for subject in section.subjects %}<span class="directory-tag subject-tag">{{ subject }}</span>{% endfor %}
+              </div>
+            {% else %}
+              <span class="muted">No subjects</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="post" action="{% url 'admissions:assign_teacher_submit' %}" class="assignment-form">
+              {% csrf_token %}
+              <input type="hidden" name="section_id" value="{{ section.id }}">
+              <select name="teacher_id" aria-label="Teacher for {{ section.course }} {{ section.code }}">
+                <option value="">Unassigned</option>
+                {% for teacher in teachers %}
+                  <option value="{{ teacher.id }}"{% if teacher.id == section.teacherId %} selected{% endif %}>{{ teacher.username }}</option>
+                {% endfor %}
+              </select>
+              <button class="button button-primary" type="submit">Save</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td class="empty" colspan="3">No course sections found.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

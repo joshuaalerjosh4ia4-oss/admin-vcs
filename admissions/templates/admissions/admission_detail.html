@@ -1,0 +1,80 @@
+{% extends "admissions/base.html" %}
+{% block title %}Admission {{ admission.id|slice:":8" }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'admissions:list' %}">← Admissions</a>
+<div class="page-heading detail-heading">
+  <div>
+    <p class="eyebrow">APPLICATION {{ admission.id|slice:":8" }}</p>
+    <h1>{{ admission.username }}</h1>
+    <p class="muted">{{ admission.email }} · Submitted {{ admission.submittedAt|date:"M j, Y H:i"|default:"date unavailable" }}</p>
+  </div>
+  <span class="badge badge-{{ admission.status|lower }}">{{ admission.status|title }}</span>
+</div>
+<div class="detail-grid">
+  <section class="card">
+    <h2>Student details</h2>
+    <dl class="details">
+      <dt>Email</dt><dd>{{ admission.email }}</dd>
+      <dt>Phone</dt><dd>{{ admission.mobilePhone|default:"—" }}</dd>
+      <dt>Age</dt><dd>{{ admission.age|default:"—" }}</dd>
+      <dt>Sex</dt><dd>{{ admission.sex|title|default:"—" }}</dd>
+      <dt>Address</dt><dd>{{ admission.blk|default:"" }} {{ admission.lot|default:"" }} {{ admission.street|default:"" }} {{ admission.villagePurok|default:"" }} {{ admission.barangay|default:"" }} {{ admission.municipality|default:"" }} {{ admission.region|default:"" }}</dd>
+    </dl>
+  </section>
+  <section class="card">
+    <h2>Course selection</h2>
+    <p><strong>{{ admission.course }}</strong></p>
+    <p class="muted">Current section: {{ admission.sectionCode }} · Year {{ admission.yearLevel }} · {{ admission.semester }}</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Subject{% if admission.status == "FINALIZED" %} / join code{% endif %}</th><th>Units</th><th>Schedule</th><th>Time</th></tr></thead>
+        <tbody>
+        {% for subject in subjects %}
+          <tr><td>{{ subject.code }}<small>{{ subject.title }}{% if admission.status == "FINALIZED" %} · Join code: {{ subject.joinCode }}{% endif %}</small></td><td>{{ subject.units }}</td><td>{{ subject.schedule|title }}</td><td>{{ subject.startTime }}–{{ subject.endTime }}</td></tr>
+        {% empty %}
+          <tr><td colspan="4">No subjects selected.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Fees</h2>
+    <dl class="details">
+      <dt>Enrollment</dt><dd>{{ admission.enrollmentFee|floatformat:2 }}</dd>
+      <dt>Subjects</dt><dd>{{ admission.subjectFees|floatformat:2 }}</dd>
+      <dt>Other</dt><dd>{{ admission.otherFees|floatformat:2 }}</dd>
+      <dt><strong>Total</strong></dt><dd><strong>{{ admission.totalFees|floatformat:2 }}</strong></dd>
+      <dt>Payment status</dt><dd>{{ admission.paymentStatus|title }}</dd>
+    </dl>
+  </section>
+  {% if admission.status == "SUBMITTED" %}
+  <section class="card decision-card">
+    <h2>Review decision</h2>
+    <p class="muted">Acceptance requires confirming the student's payment has been received. Decisions are recorded with your admin account.</p>
+    <form method="post" action="{% url 'admissions:review' admission.id %}" class="decision-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="accept">
+      <label for="section_id">Assign to section</label>
+      <select id="section_id" name="section_id" required>
+        {% for section in sections %}
+          <option value="{{ section.id }}" {% if section.id == admission.sectionId %}selected{% endif %}>{{ section.code }}</option>
+        {% endfor %}
+      </select>
+      <p class="muted">Only sections for this course, year, and semester are available. The student's selected subjects must also exist in the destination section.</p>
+      <label class="check-row"><input type="checkbox" name="confirm" value="yes" required> I confirm payment is received and approve this admission.</label>
+      <button class="button button-primary" type="submit">Confirm payment &amp; accept</button>
+    </form>
+    <hr>
+    <form method="post" action="{% url 'admissions:review' admission.id %}" class="decision-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="reject">
+      <label for="reason">Reason for rejection</label>
+      <textarea id="reason" name="reason" rows="3" maxlength="2000" required></textarea>
+      <label class="check-row"><input type="checkbox" name="confirm" value="yes" required> I confirm I want to reject this application.</label>
+      <button class="button button-danger" type="submit">Reject admission</button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

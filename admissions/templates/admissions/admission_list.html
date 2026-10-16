@@ -1,0 +1,46 @@
+{% extends "admissions/base.html" %}
+{% block title %}Admissions{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">ENROLLMENT</p>
+    <h1>Admissions</h1>
+    <p class="muted">Review applications and record decisions.</p>
+  </div>
+</div>
+<nav class="filters" aria-label="Filter admissions">
+  {% for item in statuses %}
+    <a class="filter {% if status == item %}active{% endif %}" href="?status={{ item }}">
+      {% if item == "ALL" %}All{% else %}{{ item|title }}{% endif %}
+    </a>
+  {% endfor %}
+</nav>
+<section class="table-card">
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Student</th><th>Course / section</th><th>Status</th><th>Payment</th><th>Total fees</th><th></th></tr></thead>
+      <tbody>
+      {% for item in admissions %}
+        <tr>
+          <td><strong>{{ item.username }}</strong><small>{{ item.email }}</small></td>
+          <td>{{ item.course }}<small>{{ item.sectionCode }} · Year {{ item.yearLevel }}</small></td>
+          <td><span class="badge badge-{{ item.status|lower }}">{{ item.status|title }}</span></td>
+          <td>{{ item.paymentStatus|title }}</td>
+          <td>{{ item.totalFees|floatformat:2 }}</td>
+          <td><a class="button button-small" href="{% url 'admissions:detail' item.id %}">Review</a></td>
+        </tr>
+      {% empty %}
+        <tr><td class="empty" colspan="6">No admissions found for this status.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page.paginator.num_pages > 1 %}
+    <div class="pagination">
+      {% if page.has_previous %}<a href="?status={{ status }}&page={{ page.previous_page_number }}">Previous</a>{% endif %}
+      <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+      {% if page.has_next %}<a href="?status={{ status }}&page={{ page.next_page_number }}">Next</a>{% endif %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

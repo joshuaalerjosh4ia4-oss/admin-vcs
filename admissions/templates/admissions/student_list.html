@@ -1,0 +1,47 @@
+{% extends "admissions/base.html" %}
+{% block title %}Students{% endblock %}
+{% block content %}
+<div class="directory-heading">
+  <div>
+    <p class="eyebrow">SCHOOL DIRECTORY</p>
+    <h1>Students</h1>
+    <p class="muted">Browse student accounts and their current course placement.</p>
+  </div>
+  <span class="directory-count">{{ page.paginator.count }} student{{ page.paginator.count|pluralize }}</span>
+</div>
+<form class="directory-search" method="get" role="search">
+  <label class="search-field">
+    <span aria-hidden="true">⌕</span>
+    <input type="search" name="q" value="{{ search }}" placeholder="Search students by name or email" aria-label="Search students by name or email">
+  </label>
+  <button class="button button-primary" type="submit">Search students</button>
+  {% if search %}<a class="clear-search" href="{% url 'admissions:students' %}">Clear</a>{% endif %}
+</form>
+<section class="table-card directory-table">
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Student</th><th>Course</th><th>Year level</th><th>Section</th><th>Joined</th></tr></thead>
+      <tbody>
+      {% for student in students %}
+        <tr>
+          <td><strong>{{ student.username }}</strong><small>{{ student.email }}</small></td>
+          <td>{% if student.course %}<span class="directory-tag course-tag">{{ student.course }}</span>{% else %}<span class="muted">Not assigned</span>{% endif %}</td>
+          <td>{% if student.yearLevel %}<span class="directory-tag year-tag">Year {{ student.yearLevel }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if student.sectionCode %}<span class="directory-tag section-tag">{{ student.sectionCode }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{{ student.createdAt|date:"M j, Y" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td class="empty" colspan="5">{% if search %}No students matched “{{ search }}”.{% else %}No student accounts found.{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page.paginator.num_pages > 1 %}
+    <div class="pagination">
+      {% if page.has_previous %}<a href="?q={{ search|urlencode }}&page={{ page.previous_page_number }}">Previous</a>{% endif %}
+      <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+      {% if page.has_next %}<a href="?q={{ search|urlencode }}&page={{ page.next_page_number }}">Next</a>{% endif %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

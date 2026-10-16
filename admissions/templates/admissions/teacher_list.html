@@ -1,0 +1,58 @@
+{% extends "admissions/base.html" %}
+{% block title %}Teachers{% endblock %}
+{% block content %}
+<div class="directory-heading">
+  <div>
+    <p class="eyebrow">SCHOOL DIRECTORY</p>
+    <h1>Teachers</h1>
+    <p class="muted">Manage teacher accounts and see the sections assigned to each teacher.</p>
+  </div>
+  <div>
+    <a class="button button-primary" href="{% url 'admissions:create_teacher' %}">Create teacher account</a>
+    <a class="button button-secondary" href="{% url 'admissions:assign_teachers' %}">Assign sections</a>
+    <span class="directory-count">{{ page.paginator.count }} teacher{{ page.paginator.count|pluralize }}</span>
+  </div>
+</div>
+<div class="directory-note"><strong>Access:</strong> Teachers sign in to the mobile app with the temporary password sent to their email, then change it.</div>
+<form class="directory-search" method="get" role="search">
+  <label class="search-field">
+    <span aria-hidden="true">⌕</span>
+    <input type="search" name="q" value="{{ search }}" placeholder="Search teachers by name or email" aria-label="Search teachers by name or email">
+  </label>
+  <button class="button button-primary" type="submit">Search teachers</button>
+  {% if search %}<a class="clear-search" href="{% url 'admissions:teachers' %}">Clear</a>{% endif %}
+</form>
+<section class="table-card directory-table">
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Teacher</th><th>Subjects</th><th>Joined</th></tr></thead>
+      <tbody>
+      {% for teacher in teachers %}
+        <tr>
+          <td><strong>{{ teacher.username }}</strong><small>{{ teacher.email }}</small></td>
+          <td>
+            {% if teacher.subjects %}
+              <div class="subject-tags">
+                {% for subject in teacher.subjects %}<span class="directory-tag subject-tag">{{ subject }}</span>{% endfor %}
+              </div>
+            {% else %}
+              <span class="muted">No sections assigned</span>
+            {% endif %}
+          </td>
+          <td>{{ teacher.createdAt|date:"M j, Y" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td class="empty" colspan="3">{% if search %}No teachers matched “{{ search }}”.{% else %}No teacher accounts found.{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page.paginator.num_pages > 1 %}
+    <div class="pagination">
+      {% if page.has_previous %}<a href="?q={{ search|urlencode }}&page={{ page.previous_page_number }}">Previous</a>{% endif %}
+      <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+      {% if page.has_next %}<a href="?q={{ search|urlencode }}&page={{ page.next_page_number }}">Next</a>{% endif %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
