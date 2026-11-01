@@ -1,0 +1,289 @@
+{% extends "admissions/base.html" %}
+{% block title %}Courses &amp; sections{% endblock %}
+{% block content %}
+<div class="directory-heading">
+  <div>
+    <p class="eyebrow">ACADEMIC SETUP</p>
+    <h1>Courses &amp; sections</h1>
+    <p class="muted">Manage course offerings and the sections available for student enrollment.</p>
+  </div>
+  <div class="academic-heading-actions">
+    <div class="academic-stats">
+      <span><strong>{{ course_count }}</strong> course{{ course_count|pluralize }}</span>
+      <span><strong>{{ section_count }}</strong> section{{ section_count|pluralize }}</span>
+    </div>
+    <button class="button button-primary add-course-button" type="button" id="open-course-modal" {% if not creators %}disabled{% endif %}>
+      <span aria-hidden="true">+</span> Add course or section
+    </button>
+  </div>
+</div>
+
+{% if not creators %}
+  <div class="message warning" role="status">There are no ADMIN accounts in the video-call users table. Create an app ADMIN account before adding a course section.</div>
+{% endif %}
+
+<section class="card academic-list-card">
+    <div class="card-heading">
+      <div>
+        <p class="eyebrow">CURRENT OFFERINGS</p>
+        <h2>Course sections</h2>
+        <p class="muted">Sections and subjects currently available in the shared academic database.</p>
+      </div>
+    </div>
+    <div class="academic-section-list">
+      {% for section in sections %}
+        <article class="academic-section">
+          <div class="academic-section-top">
+            <div>
+              <h3>{{ section.course }}</h3>
+              <p class="muted">Year {{ section.yearLevel }} <span aria-hidden="true">·</span> {{ section.semester }}</p>
+            </div>
+            <span class="directory-tag section-tag">{{ section.code }}</span>
+          </div>
+          <div class="section-meta">
+            <span>Created by <strong>{{ section.creatorUsername }}</strong></span>
+            {% if section.teacherUsername %}<span>Teacher <strong>{{ section.teacherUsername }}</strong></span>{% else %}<span>Teacher <strong>Unassigned</strong></span>{% endif %}
+          </div>
+          {% if section.subjects %}
+            <div class="subject-tags">
+              {% for subject in section.subjects %}<span class="directory-tag subject-tag">{{ subject }}</span>{% endfor %}
+            </div>
+          {% else %}
+            <p class="field-hint">No subjects have been added to this section.</p>
+          {% endif %}
+          <div class="academic-section-actions">
+            <button class="button button-secondary" type="button" data-open-dialog="subject-modal-{{ section.id }}">
+              <span aria-hidden="true">+</span> Add subject
+            </button>
+          </div>
+          <dialog class="academic-dialog subject-dialog" id="subject-modal-{{ section.id }}" aria-labelledby="subject-modal-title-{{ section.id }}">
+            <div class="academic-dialog-header">
+              <span class="academic-dialog-mark" aria-hidden="true">+</span>
+              <div class="academic-dialog-copy">
+                <p class="eyebrow">ACADEMIC SETUP <span>·</span> SECTION SUBJECT</p>
+                <h2 id="subject-modal-title-{{ section.id }}">Add a subject</h2>
+                <p class="muted">{{ section.course }} <span aria-hidden="true">·</span> {{ section.code }}</p>
+              </div>
+              <button class="dialog-close" type="button" data-close-dialog aria-label="Close dialog">&times;</button>
+            </div>
+            <form method="post" action="{% url 'admissions:create_section_subject' section.id %}" class="academic-form">
+              {% csrf_token %}
+              <div class="academic-fields-grid">
+                <div class="academic-field">
+                  <label for="subject-code-{{ section.id }}">Subject code <span class="required-label">Required</span></label>
+                  <input id="subject-code-{{ section.id }}" name="code" maxlength="30" required>
+                </div>
+                <div class="academic-field">
+                  <label for="subject-title-{{ section.id }}">Title <span class="required-label">Required</span></label>
+                  <input id="subject-title-{{ section.id }}" name="title" maxlength="200" required>
+                </div>
+                <div class="academic-field">
+                  <label for="subject-units-{{ section.id }}">Units <span class="required-label">Required</span></label>
+                  <select id="subject-units-{{ section.id }}" name="units" required>
+                    <option value="">Select units</option>
+                    {% for units in "123456" %}<option value="{{ units }}">{{ units }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div class="academic-field">
+                  <label for="subject-day-{{ section.id }}">Day <span class="required-label">Required</span></label>
+                  <select id="subject-day-{{ section.id }}" name="day_of_week" required>
+                    <option value="">Select day</option>
+                    <option value="1">Monday</option>
+                    <option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option>
+                    <option value="4">Thursday</option>
+                    <option value="5">Friday</option>
+                    <option value="6">Saturday</option>
+                    <option value="7">Sunday</option>
+                  </select>
+                </div>
+                <div class="academic-field">
+                  <label for="subject-start-{{ section.id }}">Start time <span class="required-label">Required</span></label>
+                  <input id="subject-start-{{ section.id }}" name="start_time" type="time" required>
+                </div>
+                <div class="academic-field">
+                  <label for="subject-end-{{ section.id }}">End time <span class="required-label">Required</span></label>
+                  <input id="subject-end-{{ section.id }}" name="end_time" type="time" required>
+                </div>
+              </div>
+              <div class="academic-form-actions">
+                <span class="field-hint">The end time must be after the start time.</span>
+                <div class="dialog-actions">
+                  <button class="button button-secondary" type="button" data-close-dialog>Cancel</button>
+                  <button class="button button-primary" type="submit">Add subject</button>
+                </div>
+              </div>
+            </form>
+          </dialog>
+        </article>
+      {% empty %}
+        <p class="empty">No course sections yet. Add the first one using the form.</p>
+      {% endfor %}
+    </div>
+    {% if page.paginator.num_pages > 1 %}
+      <div class="pagination">
+        {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">Previous</a>{% endif %}
+        <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Next</a>{% endif %}
+      </div>
+    {% endif %}
+  </section>
+
+<dialog class="academic-dialog" id="course-modal" aria-labelledby="course-modal-title">
+  <div class="academic-dialog-header">
+    <span class="academic-dialog-mark" aria-hidden="true">+</span>
+    <div class="academic-dialog-copy">
+      <p class="eyebrow">ACADEMIC SETUP <span>·</span> NEW OFFERING</p>
+      <h2 id="course-modal-title">Add a course section</h2>
+      <p class="muted">Set up a course, its section, and the subjects students can enroll in.</p>
+    </div>
+    <button class="dialog-close" type="button" id="close-course-modal" aria-label="Close dialog">&times;</button>
+  </div>
+  <form method="post" action="{% url 'admissions:create_course_section' %}" class="academic-form">
+    {% csrf_token %}
+    <div class="academic-fields-grid">
+      <div class="academic-field academic-field-wide">
+        <label for="course">Course name <span class="required-label">Required</span></label>
+        <input id="course" name="course" list="existing-courses" maxlength="120" placeholder="e.g. Bachelor of Science in Information Technology" required autofocus>
+        <datalist id="existing-courses">
+          {% for course in course_names %}<option value="{{ course }}">{% endfor %}
+        </datalist>
+        <p class="field-hint">Choose an existing course or enter a new course name.</p>
+      </div>
+      <div class="academic-field">
+        <label for="section_code">Section code <span class="required-label">Required</span></label>
+        <input id="section_code" name="section_code" maxlength="80" placeholder="e.g. BSIT-1A" required>
+      </div>
+      <div class="academic-field">
+        <label for="year_level">Year level <span class="required-label">Required</span></label>
+        <select id="year_level" name="year_level" required>
+          <option value="">Select year</option>
+          {% for year in "12345678" %}<option value="{{ year }}">Year {{ year }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="academic-field">
+        <label for="semester">Semester <span class="required-label">Required</span></label>
+        <input id="semester" name="semester" maxlength="80" placeholder="e.g. First Semester" required>
+      </div>
+      <div class="academic-field">
+        <label for="creator_id">Created by <span class="optional-label">Video-call ADMIN</span> <span class="required-label">Required</span></label>
+        <select id="creator_id" name="creator_id" required {% if not creators %}disabled{% endif %}>
+          <option value="">Choose an app ADMIN</option>
+          {% for creator in creators %}<option value="{{ creator.id }}">{{ creator.username }}</option>{% endfor %}
+        </select>
+        <p class="field-hint">Select the app account that owns this offering.</p>
+      </div>
+      <div class="academic-field">
+        <label for="teacher_id">Assigned teacher <span class="optional-label">Optional</span></label>
+        <select id="teacher_id" name="teacher_id">
+          <option value="">Leave unassigned</option>
+          {% for teacher in teachers %}<option value="{{ teacher.id }}">{{ teacher.username }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="academic-field academic-field-wide subject-entry">
+        <div class="subject-entry-heading">
+          <div>
+            <label for="subjects">Subjects for this section <span class="required-label">Required</span></label>
+            <p class="field-hint">Add each subject on its own line using the format below.</p>
+          </div>
+          <span class="subject-count" id="subject-count" aria-live="polite">0 subjects</span>
+        </div>
+        <textarea id="subjects" name="subjects" rows="5" placeholder="IT101 | Introduction to Computing | 3 | 1 | 08:00 | 10:00&#10;MATH101 | College Mathematics | 3 | 2 | 10:00 | 12:00" required></textarea>
+        <p class="field-hint">One subject per line: <code>CODE | Title | Units (1-6) | Day (1=Mon, 7=Sun) | Start (HH:MM) | End (HH:MM)</code>. Add at least one subject.</p>
+      </div>
+    </div>
+    <div class="academic-form-actions">
+      <span class="field-hint"><span class="save-indicator" aria-hidden="true"></span> Section and subjects are saved together.</span>
+      <div class="dialog-actions">
+        <button class="button button-secondary" type="button" id="cancel-course-modal">Cancel</button>
+        <button class="button button-primary" type="submit" {% if not creators %}disabled{% endif %}>Create course section</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+<script>
+  (() => {
+    const dialog = document.getElementById("course-modal");
+    const openButton = document.getElementById("open-course-modal");
+    const closeButton = document.getElementById("close-course-modal");
+    const cancelButton = document.getElementById("cancel-course-modal");
+    if (!dialog || !openButton) return;
+
+    const form = dialog.querySelector("form");
+    const submitButton = form && form.querySelector('button[type="submit"]');
+    const subjectsField = document.getElementById("subjects");
+    const subjectCount = document.getElementById("subject-count");
+    const subjectSection = new URLSearchParams(window.location.search).get("subject_section");
+
+    openButton.addEventListener("click", () => {
+      if (!dialog.open) dialog.showModal();
+    });
+    closeButton.addEventListener("click", () => dialog.close());
+    cancelButton.addEventListener("click", () => dialog.close());
+    document.addEventListener("keydown", (event) => {
+      if (dialog.open && event.key === "Escape") {
+        event.preventDefault();
+        dialog.close();
+      }
+    }, true);
+    dialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      dialog.close();
+    });
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+    dialog.addEventListener("close", () => {
+      window.setTimeout(() => {
+        if (!dialog.open) openButton.focus();
+      }, 0);
+    });
+    if (form && submitButton) {
+      form.addEventListener("submit", () => {
+        submitButton.disabled = true;
+        submitButton.setAttribute("aria-busy", "true");
+        submitButton.textContent = "Creating...";
+      });
+    }
+    if (subjectsField && subjectCount) {
+      const updateSubjectCount = () => {
+        const count = subjectsField.value.split(/\r?\n/).filter((line) => line.trim()).length;
+        subjectCount.textContent = `${count} subject${count === 1 ? "" : "s"}`;
+      };
+      subjectsField.addEventListener("input", updateSubjectCount);
+      updateSubjectCount();
+    }
+    if (document.querySelector(".messages .message.error") && !subjectSection) dialog.showModal();
+    if (subjectSection) {
+      const subjectDialog = document.getElementById(`subject-modal-${subjectSection}`);
+      if (subjectDialog) subjectDialog.showModal();
+    }
+
+    document.querySelectorAll("[data-open-dialog]").forEach((button) => {
+      const subjectDialog = document.getElementById(button.dataset.openDialog);
+      if (!subjectDialog) return;
+      button.addEventListener("click", () => subjectDialog.showModal());
+      subjectDialog.querySelectorAll("[data-close-dialog]").forEach((closeButton) => {
+        closeButton.addEventListener("click", () => subjectDialog.close());
+      });
+      subjectDialog.addEventListener("click", (event) => {
+        if (event.target === subjectDialog) subjectDialog.close();
+      });
+      subjectDialog.addEventListener("close", () => {
+        window.setTimeout(() => {
+          if (!subjectDialog.open) button.focus();
+        }, 0);
+      });
+      const subjectForm = subjectDialog.querySelector("form");
+      const subjectSubmit = subjectForm && subjectForm.querySelector('button[type="submit"]');
+      if (subjectForm && subjectSubmit) {
+        subjectForm.addEventListener("submit", () => {
+          subjectSubmit.disabled = true;
+          subjectSubmit.setAttribute("aria-busy", "true");
+          subjectSubmit.textContent = "Adding...";
+        });
+      }
+    });
+  })();
+</script>
+{% endblock %}

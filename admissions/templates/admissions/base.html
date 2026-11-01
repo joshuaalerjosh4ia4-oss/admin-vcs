@@ -5,20 +5,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Admissions{% endblock %} | MyClaSSes Admin</title>
-  <link rel="stylesheet" href="{% static 'admissions/admin.css' %}">
+  <link rel="stylesheet" href="{% static 'admissions/admin.css' %}?v=20261101-admin-header-contrast">
+  <link rel="icon" href="{% static 'images/Logosplash.png' %}" sizes="32x32" type="image/png">
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
   <header class="topbar">
     <div class="topbar-inner">
       <a class="brand" href="{% url 'home' %}">
-        <span class="brand-mark" aria-hidden="true">M</span>
+        <img class="brand-mark" src="{% static 'images/Logosplash.png' %}" alt="MyClaSSes logo" width="32" height="32">
         <span class="brand-copy">MyClaSSes <small>ADMISSIONS OFFICE</small></span>
       </a>
       {% if user.is_authenticated and user.is_active and user.is_staff and user.is_superuser %}
         <div class="account">
           <span class="account-avatar" aria-hidden="true">{{ user.get_username|slice:":1"|upper }}</span>
-          <span class="account-name"><small>Signed in</small>{{ user.get_username }}</span>
-          <form method="post" action="{% url 'logout' %}">
+          <span class="account-name">{{ user.get_username }}</span>
+          <form id="admin-logout-form" method="post" action="{% url 'logout' %}" data-idle-logout-url="{% url 'idle_logout' %}">
             {% csrf_token %}
             <button class="button button-quiet" type="submit">Sign out</button>
           </form>
@@ -50,6 +52,9 @@
         <a class="{% if request.resolver_match.url_name == 'list' or request.resolver_match.url_name == 'detail' or request.resolver_match.url_name == 'review' %}active{% endif %}" href="{% url 'admissions:list' %}">
           <span class="admin-nav-icon" aria-hidden="true">A</span><span>Admissions</span>
         </a>
+        <a class="{% if request.resolver_match.url_name == 'courses_sections' or request.resolver_match.url_name == 'create_course_section' %}active{% endif %}" href="{% url 'admissions:courses_sections' %}">
+          <span class="admin-nav-icon" aria-hidden="true">C</span><span>Courses &amp; sections</span>
+        </a>
         <a class="{% if request.resolver_match.url_name == 'students' %}active{% endif %}" href="{% url 'admissions:students' %}">
           <span class="admin-nav-icon" aria-hidden="true">S</span><span>Students</span>
         </a>
@@ -79,5 +84,51 @@
     <span>MyClaSSes <span class="footer-divider">/</span> Admissions Office</span>
     <span>Supporting every student's next step.</span>
   </footer>
+  {% if user.is_authenticated and user.is_active and user.is_staff and user.is_superuser %}
+    <script>
+      (() => {
+        const logoutForm = document.getElementById("admin-logout-form");
+        if (!logoutForm) return;
+
+        const awayTimeout = 5 * 60 * 1000;
+        let awaySince = null;
+        let logoutTimer = null;
+        let loggingOut = false;
+
+        const signOut = () => {
+          if (loggingOut) return;
+          loggingOut = true;
+          logoutForm.action = logoutForm.dataset.idleLogoutUrl;
+          logoutForm.requestSubmit();
+        };
+
+        const markAway = () => {
+          if (awaySince !== null) return;
+          awaySince = Date.now();
+          logoutTimer = window.setTimeout(signOut, awayTimeout);
+        };
+
+        const resume = () => {
+          if (awaySince === null) return;
+          if (Date.now() - awaySince >= awayTimeout) {
+            signOut();
+            return;
+          }
+          window.clearTimeout(logoutTimer);
+          logoutTimer = null;
+          awaySince = null;
+        };
+
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) markAway();
+          else resume();
+        });
+        window.addEventListener("blur", markAway);
+        window.addEventListener("focus", () => {
+          if (!document.hidden) resume();
+        });
+      })();
+    </script>
+  {% endif %}
 </body>
 </html>

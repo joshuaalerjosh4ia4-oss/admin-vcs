@@ -23,8 +23,11 @@
       <thead><tr><th>Student</th><th>Course</th><th>Year level</th><th>Section</th><th>Joined</th></tr></thead>
       <tbody>
       {% for student in students %}
-        <tr>
-          <td><strong>{{ student.username }}</strong><small>{{ student.email }}</small></td>
+        <tr class="student-row" tabindex="0" data-open-student-modal="student-modal-{{ student.id }}" aria-haspopup="dialog" aria-label="View profile for {{ student.username }}">
+          <td>
+            <strong>{{ student.username }}</strong>
+            <small>{{ student.email }}</small>
+          </td>
           <td>{% if student.course %}<span class="directory-tag course-tag">{{ student.course }}</span>{% else %}<span class="muted">Not assigned</span>{% endif %}</td>
           <td>{% if student.yearLevel %}<span class="directory-tag year-tag">Year {{ student.yearLevel }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
           <td>{% if student.sectionCode %}<span class="directory-tag section-tag">{{ student.sectionCode }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
@@ -44,4 +47,106 @@
     </div>
   {% endif %}
 </section>
+{% for student in students %}
+  <dialog class="academic-dialog student-modal" id="student-modal-{{ student.id }}" aria-labelledby="student-modal-title-{{ student.id }}">
+    <div class="academic-dialog-header">
+      <span class="academic-dialog-mark" aria-hidden="true">{{ student.username|first|upper }}</span>
+      <div class="academic-dialog-copy">
+        <p class="eyebrow">STUDENT PROFILE <span>·</span> ENROLLED SUBJECTS</p>
+        <h2 id="student-modal-title-{{ student.id }}">{{ student.username }}</h2>
+        <p class="muted">{{ student.email }}</p>
+      </div>
+      <button class="dialog-close" type="button" data-close-student-modal aria-label="Close dialog">&times;</button>
+    </div>
+    <div class="student-modal-content">
+      {% if student.subjects %}
+        <p class="field-hint">Schedule times are shared by everyone enrolled in the subject. Saving a time change updates it for all students in that section.</p>
+        <div class="student-subject-list">
+          {% for subject in student.subjects %}
+            <article class="student-subject-card">
+              <div class="student-subject-heading">
+                <div>
+                  <h3>{{ subject.code }} <span>·</span> {{ subject.title }}</h3>
+                  <p class="muted">{{ subject.course }} <span aria-hidden="true">·</span> {{ subject.sectionCode }} <span aria-hidden="true">·</span> {{ subject.dayName }}</p>
+                </div>
+                <span class="student-subject-time">{{ subject.startTime }}–{{ subject.endTime }}</span>
+              </div>
+              <form method="post" action="{% url 'admissions:update_student_subject_time' student.id subject.subjectId %}" class="student-time-form">
+                {% csrf_token %}
+                <input type="hidden" name="return_q" value="{{ search }}">
+                <input type="hidden" name="return_page" value="{{ page.number }}">
+                <div class="academic-field">
+                  <label for="subject-day-{{ student.id }}-{{ subject.subjectId }}">Day</label>
+                  <select id="subject-day-{{ student.id }}-{{ subject.subjectId }}" name="day_of_week" required>
+                    <option value="1" {% if subject.dayOfWeek == 1 %}selected{% endif %}>Monday</option>
+                    <option value="2" {% if subject.dayOfWeek == 2 %}selected{% endif %}>Tuesday</option>
+                    <option value="3" {% if subject.dayOfWeek == 3 %}selected{% endif %}>Wednesday</option>
+                    <option value="4" {% if subject.dayOfWeek == 4 %}selected{% endif %}>Thursday</option>
+                    <option value="5" {% if subject.dayOfWeek == 5 %}selected{% endif %}>Friday</option>
+                    <option value="6" {% if subject.dayOfWeek == 6 %}selected{% endif %}>Saturday</option>
+                    <option value="7" {% if subject.dayOfWeek == 7 %}selected{% endif %}>Sunday</option>
+                  </select>
+                </div>
+                <div class="academic-field">
+                  <label for="subject-start-{{ student.id }}-{{ subject.subjectId }}">Start time</label>
+                  <input id="subject-start-{{ student.id }}-{{ subject.subjectId }}" name="start_time" type="time" value="{{ subject.startTime }}" required>
+                </div>
+                <div class="academic-field">
+                  <label for="subject-end-{{ student.id }}-{{ subject.subjectId }}">End time</label>
+                  <input id="subject-end-{{ student.id }}-{{ subject.subjectId }}" name="end_time" type="time" value="{{ subject.endTime }}" required>
+                </div>
+                <button class="button button-primary" type="submit">Save time</button>
+              </form>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty">This student has no enrolled subjects yet.</p>
+      {% endif %}
+    </div>
+  </dialog>
+{% endfor %}
+<script>
+  (() => {
+    const rows = document.querySelectorAll(".student-row[data-open-student-modal]");
+    rows.forEach((row) => {
+      const dialog = document.getElementById(row.dataset.openStudentModal);
+      if (!dialog) return;
+      row.addEventListener("click", () => dialog.showModal());
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          dialog.showModal();
+        }
+      });
+      dialog.querySelectorAll("[data-close-student-modal]").forEach((closeButton) => {
+        closeButton.addEventListener("click", () => dialog.close());
+      });
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) dialog.close();
+      });
+      dialog.addEventListener("close", () => {
+        window.setTimeout(() => {
+          if (!dialog.open) row.focus();
+        }, 0);
+      });
+      const forms = dialog.querySelectorAll(".student-time-form");
+      forms.forEach((form) => {
+        form.addEventListener("submit", () => {
+          const submitButton = form.querySelector('button[type="submit"]');
+          if (!submitButton) return;
+          submitButton.disabled = true;
+          submitButton.setAttribute("aria-busy", "true");
+          submitButton.textContent = "Saving...";
+        });
+      });
+    });
+
+    const studentId = new URLSearchParams(window.location.search).get("subject_student");
+    if (studentId) {
+      const requestedDialog = document.getElementById(`student-modal-${studentId}`);
+      if (requestedDialog) requestedDialog.showModal();
+    }
+  })();
+</script>
 {% endblock %}

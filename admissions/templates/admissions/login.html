@@ -5,6 +5,9 @@
   <p class="eyebrow">STAFF ACCESS</p>
   <h1>Sign in to admissions</h1>
   <p class="muted">Use your Django superuser account. Accounts are created by a server operator; public registration is disabled.</p>
+  {% if request.GET.session_expired %}
+    <p class="message warning" role="alert">Your admin session expired. Please sign in again.</p>
+  {% endif %}
   {% if form.errors %}
     <p class="message error" role="alert">Sign-in failed. Check your credentials or contact the system operator.</p>
   {% endif %}

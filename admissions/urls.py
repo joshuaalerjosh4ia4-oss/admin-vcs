@@ -6,7 +6,19 @@ app_name = "admissions"
 
 urlpatterns = [
     path("", views.admission_list, name="list"),
+    path("courses-sections/", views.courses_sections, name="courses_sections"),
+    path("courses-sections/create/", views.create_course_section, name="create_course_section"),
+    path(
+        "courses-sections/<uuid:section_id>/subjects/create/",
+        views.create_section_subject,
+        name="create_section_subject",
+    ),
     path("students/", views.student_list, name="students"),
+    path(
+        "students/<uuid:student_id>/subjects/<uuid:subject_id>/time/",
+        views.update_student_subject_time,
+        name="update_student_subject_time",
+    ),
     path("teachers/", views.teacher_list, name="teachers"),
     path("teachers/create/", views.create_teacher, name="create_teacher"),
     path("teachers/create/submit/", views.create_teacher_submit, name="create_teacher_submit"),
