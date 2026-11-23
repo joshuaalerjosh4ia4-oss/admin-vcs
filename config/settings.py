@@ -28,6 +28,10 @@ if parsed_database_url.scheme not in {"postgres", "postgresql"}:
 
 database_options = parse_qs(parsed_database_url.query)
 sslmode = database_options.get("sslmode", [None])[0]
+if not DEBUG and sslmode != "verify-full":
+    raise ImproperlyConfigured(
+        "Production DATABASE_URL must use sslmode=verify-full."
+    )
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -144,6 +148,13 @@ CSRF_TRUSTED_ORIGINS = [
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
-SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SECURE_SSL_REDIRECT", "false").lower() == "true"
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = os.environ.get(
+    "DJANGO_SECURE_SSL_REDIRECT", "false" if DEBUG else "true"
+).lower() == "true"
+if not DEBUG and not SECURE_SSL_REDIRECT:
+    raise ImproperlyConfigured(
+        "Set DJANGO_SECURE_SSL_REDIRECT=true in production."
+    )
 SECURE_HSTS_SECONDS = 31536000 if not DEBUG and SECURE_SSL_REDIRECT else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = bool(SECURE_HSTS_SECONDS)
