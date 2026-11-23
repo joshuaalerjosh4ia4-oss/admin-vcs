@@ -28,9 +28,9 @@ if parsed_database_url.scheme not in {"postgres", "postgresql"}:
 
 database_options = parse_qs(parsed_database_url.query)
 sslmode = database_options.get("sslmode", [None])[0]
-if not DEBUG and sslmode != "verify-full":
+if not DEBUG and sslmode not in {"require", "verify-full"}:
     raise ImproperlyConfigured(
-        "Production DATABASE_URL must use sslmode=verify-full."
+        "Production DATABASE_URL must use sslmode=require or sslmode=verify-full."
     )
 
 INSTALLED_APPS = [
