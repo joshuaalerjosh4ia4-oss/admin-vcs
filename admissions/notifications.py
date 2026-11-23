@@ -2,6 +2,8 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import send_mail
 
+from .time_format import format_time_12_hour
+
 
 def send_admission_confirmation(
     *,
@@ -24,7 +26,7 @@ def send_admission_confirmation(
         day_name = weekdays[day_of_week - 1] if 1 <= day_of_week <= len(weekdays) else "Unscheduled"
         subject_lines.append(
             f"- {code} - {title} (join code: {join_code}): "
-            f"{day_name}, {start_time}-{end_time} ({schedule.title()})"
+            f"{day_name}, {format_time_12_hour(start_time)}-{format_time_12_hour(end_time)} ({schedule.title()})"
         )
 
     subjects_text = "\n".join(subject_lines) if subject_lines else "- No subjects are currently listed."

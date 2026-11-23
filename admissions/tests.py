@@ -9,11 +9,13 @@ from django.contrib.auth.models import AnonymousUser, User
 from django.core import mail
 from django.core.servers.basehttp import WSGIRequestHandler
 from django.http import HttpResponse
+from django.template import Context, Template
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import resolve
 
 from .management.commands.runserver import AutoPortWSGIServer
 from .notifications import send_admission_confirmation
+from .time_format import format_time_12_hour
 from .views import (
     admin_required,
     assign_teacher_submit,
@@ -134,7 +136,7 @@ class AdminAccessTests(SimpleTestCase):
         self.assertContains(response, f'aria-label="View profile for student-one"', html=False)
         self.assertContains(response, "Introduction to Computing")
         self.assertContains(response, "Monday")
-        self.assertContains(response, "08:00–10:00")
+        self.assertContains(response, "8:00 AM–10:00 AM")
         self.assertContains(
             response,
             f'action="/admissions/students/{student_id}/subjects/{subject_id}/time/"',
@@ -826,6 +828,16 @@ class AdminSessionTimeoutTests(TestCase):
 
 
 class AdmissionNotificationTests(SimpleTestCase):
+    def test_schedule_times_are_formatted_as_12_hour_times(self):
+        self.assertEqual(format_time_12_hour("13:00"), "1:00 PM")
+        self.assertEqual(format_time_12_hour("00:05"), "12:05 AM")
+        self.assertEqual(format_time_12_hour("12:00"), "12:00 PM")
+        self.assertEqual(format_time_12_hour("invalid"), "invalid")
+        rendered = Template("{% load time_format %}{{ value|time12 }}").render(
+            Context({"value": "13:00"})
+        )
+        self.assertEqual(rendered, "1:00 PM")
+
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
         EMAIL_HOST_USER="mailer@gmail.com",
@@ -850,5 +862,5 @@ class AdmissionNotificationTests(SimpleTestCase):
         self.assertIn("Computer Science", message.body)
         self.assertIn("CS-1A", message.body)
         self.assertIn("482019", message.body)
-        self.assertIn("Monday, 08:00-09:00 (Morning)", message.body)
+        self.assertIn("Monday, 8:00 AM-9:00 AM (Morning)", message.body)
         self.assertIn("Video meeting IDs and passcodes are shared separately", message.body)

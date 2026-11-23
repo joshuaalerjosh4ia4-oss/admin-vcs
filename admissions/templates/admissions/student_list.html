@@ -1,4 +1,5 @@
 {% extends "admissions/base.html" %}
+{% load time_format %}
 {% block title %}Students{% endblock %}
 {% block content %}
 <div class="directory-heading">
@@ -69,7 +70,7 @@
                   <h3>{{ subject.code }} <span>·</span> {{ subject.title }}</h3>
                   <p class="muted">{{ subject.course }} <span aria-hidden="true">·</span> {{ subject.sectionCode }} <span aria-hidden="true">·</span> {{ subject.dayName }}</p>
                 </div>
-                <span class="student-subject-time">{{ subject.startTime }}–{{ subject.endTime }}</span>
+                <span class="student-subject-time">{{ subject.startTime|time12 }}–{{ subject.endTime|time12 }}</span>
               </div>
               <form method="post" action="{% url 'admissions:update_student_subject_time' student.id subject.subjectId %}" class="student-time-form">
                 {% csrf_token %}

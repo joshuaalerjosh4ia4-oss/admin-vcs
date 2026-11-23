@@ -1,4 +1,5 @@
 {% extends "admissions/base.html" %}
+{% load time_format %}
 {% block title %}Admission {{ admission.id|slice:":8" }}{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'admissions:list' %}">← Admissions</a>
@@ -6,7 +7,7 @@
   <div>
     <p class="eyebrow">APPLICATION {{ admission.id|slice:":8" }}</p>
     <h1>{{ admission.username }}</h1>
-    <p class="muted">{{ admission.email }} · Submitted {{ admission.submittedAt|date:"M j, Y H:i"|default:"date unavailable" }}</p>
+    <p class="muted">{{ admission.email }} · Submitted {{ admission.submittedAt|date:"M j, Y g:i A"|default:"date unavailable" }}</p>
   </div>
   <span class="badge badge-{{ admission.status|lower }}">{{ admission.status|title }}</span>
 </div>
@@ -30,7 +31,7 @@
         <thead><tr><th>Subject{% if admission.status == "FINALIZED" %} / join code{% endif %}</th><th>Units</th><th>Schedule</th><th>Time</th></tr></thead>
         <tbody>
         {% for subject in subjects %}
-          <tr><td>{{ subject.code }}<small>{{ subject.title }}{% if admission.status == "FINALIZED" %} · Join code: {{ subject.joinCode }}{% endif %}</small></td><td>{{ subject.units }}</td><td>{{ subject.schedule|title }}</td><td>{{ subject.startTime }}–{{ subject.endTime }}</td></tr>
+          <tr><td>{{ subject.code }}<small>{{ subject.title }}{% if admission.status == "FINALIZED" %} · Join code: {{ subject.joinCode }}{% endif %}</small></td><td>{{ subject.units }}</td><td>{{ subject.schedule|title }}</td><td>{{ subject.startTime|time12 }}–{{ subject.endTime|time12 }}</td></tr>
         {% empty %}
           <tr><td colspan="4">No subjects selected.</td></tr>
         {% endfor %}
