@@ -1,5 +1,6 @@
 from contextlib import nullcontext
 import bcrypt
+import os
 import socket
 import uuid
 from unittest.mock import MagicMock, patch
@@ -7,6 +8,8 @@ from unittest.mock import MagicMock, patch
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser, User
 from django.core import mail
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.core.servers.basehttp import WSGIRequestHandler
 from django.http import HttpResponse
 from django.template import Context, Template
@@ -28,6 +31,32 @@ from .views import (
     student_list,
     update_student_subject_time,
 )
+
+
+class ProvisionSuperuserTests(TestCase):
+    def test_creates_configured_superuser_and_does_not_reset_password_on_restart(self):
+        environment = {
+            "DJANGO_SUPERUSER_USERNAME": "deployment-admin",
+            "DJANGO_SUPERUSER_EMAIL": "admin@example.com",
+            "DJANGO_SUPERUSER_PASSWORD": "long-test-password-2026!",
+        }
+        with patch.dict(os.environ, environment):
+            call_command("provision_superuser")
+            user = User.objects.get(username="deployment-admin")
+            self.assertTrue(user.is_superuser)
+            self.assertTrue(user.check_password(environment["DJANGO_SUPERUSER_PASSWORD"]))
+
+            os.environ["DJANGO_SUPERUSER_PASSWORD"] = "different-test-password-2026!"
+            call_command("provision_superuser")
+            user.refresh_from_db()
+            self.assertTrue(user.check_password(environment["DJANGO_SUPERUSER_PASSWORD"]))
+
+    def test_requires_username(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesMessage(
+                CommandError, "Set DJANGO_SUPERUSER_USERNAME"
+            ):
+                call_command("provision_superuser")
 
 
 class AutoPortServerTests(SimpleTestCase):
