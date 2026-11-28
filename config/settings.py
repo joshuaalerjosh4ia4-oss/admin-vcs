@@ -139,15 +139,11 @@ LOGGING = {
     },
 }
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
-EMAIL_TIMEOUT = 15
-EMAIL_HOST_USER = os.environ.get("SMTP_USER", "")
-EMAIL_HOST_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.environ.get("SMTP_FROM", EMAIL_HOST_USER)
+GMAIL_OAUTH_CLIENT_ID = os.environ.get("GMAIL_OAUTH_CLIENT_ID", "")
+GMAIL_OAUTH_CLIENT_SECRET = os.environ.get("GMAIL_OAUTH_CLIENT_SECRET", "")
+GMAIL_OAUTH_REFRESH_TOKEN = os.environ.get("GMAIL_OAUTH_REFRESH_TOKEN", "")
+GMAIL_FROM_EMAIL = os.environ.get("GMAIL_FROM_EMAIL", "")
+GMAIL_API_TIMEOUT = 15
 
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "admissions:list"

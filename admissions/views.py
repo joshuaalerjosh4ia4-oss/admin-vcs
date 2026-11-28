@@ -2,13 +2,11 @@ from functools import wraps
 import logging
 import re
 import secrets
-import smtplib
 import uuid
 from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.core.exceptions import ImproperlyConfigured, ValidationError
-from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.core.validators import validate_email
 from django.db import IntegrityError, connection, transaction
@@ -19,7 +17,7 @@ from django.views.decorators.http import require_GET, require_POST
 import bcrypt
 
 from .models import AdmissionReviewLog
-from .notifications import send_admission_confirmation
+from .notifications import GmailAPIError, send_admission_confirmation, send_gmail_message
 
 logger = logging.getLogger(__name__)
 
@@ -748,7 +746,7 @@ def create_teacher_submit(request: HttpRequest) -> HttpResponse:
                     [teacher_id, username, email, password_hash],
                 )
             try:
-                send_mail(
+                send_gmail_message(
                     subject="Your MyClaSSes teacher account",
                     message=(
                         f"Hello {username},\n\n"
@@ -756,18 +754,16 @@ def create_teacher_submit(request: HttpRequest) -> HttpResponse:
                         f"with your email and this temporary password:\n\n{temporary_password}\n\n"
                         "You will be asked to change it after signing in."
                     ),
-                    from_email=None,
-                    recipient_list=[email],
-                    fail_silently=False,
+                    recipient=email,
                 )
-            except (OSError, smtplib.SMTPException, ImproperlyConfigured):
+            except (OSError, GmailAPIError, ImproperlyConfigured):
                 logger.exception("Could not send teacher account email to %s", email)
                 raise TeacherEmailError from None
     except TeacherEmailError:
         messages.error(
             request,
             "The teacher account was not created because its temporary password could not be emailed. "
-            "Check Gmail SMTP settings and try again.",
+            "Check the Gmail API settings and try again.",
         )
         return redirect("admissions:create_teacher")
     except IntegrityError:
@@ -1068,13 +1064,13 @@ def review_admission(request: HttpRequest, admission_id: str) -> HttpResponse:
                         semester=semester,
                         subjects=subjects,
                     )
-                except (OSError, smtplib.SMTPException, ImproperlyConfigured):
+                except (OSError, GmailAPIError, ImproperlyConfigured):
                     logger.exception("Could not email admission confirmation for %s", admission_id)
                     transaction.set_rollback(True)
                     messages.error(
                         request,
                         "The admission was not finalized because its confirmation email could not be sent. "
-                        "Check the Gmail SMTP settings and try again.",
+                        "Check the Gmail API settings and try again.",
                     )
                     return redirect("admissions:detail", admission_id=admission_id)
 

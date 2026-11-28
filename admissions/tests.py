@@ -1,13 +1,17 @@
-from contextlib import nullcontext
+import base64
 import bcrypt
+import json
 import os
 import socket
 import uuid
+from contextlib import nullcontext
+from email import message_from_bytes
 from unittest.mock import MagicMock, patch
+from urllib.parse import parse_qs
 
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser, User
-from django.core import mail
+from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.core.servers.basehttp import WSGIRequestHandler
@@ -17,7 +21,7 @@ from django.test import RequestFactory, SimpleTestCase, TestCase, override_setti
 from django.urls import resolve
 
 from .management.commands.runserver import AutoPortWSGIServer
-from .notifications import send_admission_confirmation
+from .notifications import send_admission_confirmation, send_gmail_message
 from .time_format import format_time_12_hour
 from .views import (
     admin_required,
@@ -562,7 +566,7 @@ class AdminAccessTests(SimpleTestCase):
 
         with patch("admissions.views.connection.cursor", return_value=cursor), patch(
             "admissions.views.transaction.atomic", return_value=nullcontext()
-        ), patch("admissions.views.send_mail") as send_teacher_email, patch(
+        ), patch("admissions.views.send_gmail_message") as send_teacher_email, patch(
             "admissions.views.messages.success"
         ):
             response = create_teacher_submit(request)
@@ -583,6 +587,14 @@ class AdminAccessTests(SimpleTestCase):
             )
         )
         send_teacher_email.assert_called_once()
+        self.assertEqual(
+            send_teacher_email.call_args.kwargs["subject"],
+            "Your MyClaSSes teacher account",
+        )
+        self.assertEqual(
+            send_teacher_email.call_args.kwargs["recipient"],
+            "teacher@example.com",
+        )
 
     def test_assign_teacher_updates_the_selected_course_section(self):
         section_id = "08c89f3f-f653-4faf-86d1-03009f505f41"
@@ -686,7 +698,8 @@ class AdminAccessTests(SimpleTestCase):
         ), patch("admissions.views.transaction.set_rollback") as set_rollback, patch(
             "admissions.views.AdmissionReviewLog.objects.create"
         ) as create_log, patch("admissions.views.messages.error") as error_message, patch(
-            "admissions.views.send_admission_confirmation", side_effect=OSError("SMTP unavailable")
+            "admissions.views.send_admission_confirmation",
+            side_effect=OSError("Gmail API unavailable"),
         ):
             response = review_admission(request, admission_id=admission_id)
 
@@ -868,28 +881,69 @@ class AdmissionNotificationTests(SimpleTestCase):
         self.assertEqual(rendered, "1:00 PM")
 
     @override_settings(
-        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
-        EMAIL_HOST_USER="mailer@gmail.com",
-        EMAIL_HOST_PASSWORD="app-password",
-        DEFAULT_FROM_EMAIL="mailer@gmail.com",
+        GMAIL_OAUTH_CLIENT_ID="client-id",
+        GMAIL_OAUTH_CLIENT_SECRET="client-secret",
+        GMAIL_OAUTH_REFRESH_TOKEN="refresh-token",
+        GMAIL_FROM_EMAIL="mailer@gmail.com",
     )
-    def test_confirmation_contains_finalized_section_and_subject_schedule(self):
-        send_admission_confirmation(
-            email="student@example.com",
-            username="student-name",
-            course="Computer Science",
-            section_code="CS-1A",
-            year_level=1,
-            semester="First Semester",
-            subjects=[("CS101", "Introduction to Computing", "482019", 1, "08:00", "09:00", "morning")],
-        )
+    def test_confirmation_sends_through_gmail_api_with_finalized_schedule(self):
+        token_response = MagicMock()
+        token_response.__enter__.return_value = token_response
+        token_response.read.return_value = b'{"access_token":"access-token"}'
+        send_response = MagicMock()
+        send_response.__enter__.return_value = send_response
+        send_response.read.return_value = b'{"id":"message-id"}'
 
-        self.assertEqual(len(mail.outbox), 1)
-        message = mail.outbox[0]
-        self.assertEqual(message.to, ["student@example.com"])
-        self.assertEqual(message.from_email, "mailer@gmail.com")
-        self.assertIn("Computer Science", message.body)
-        self.assertIn("CS-1A", message.body)
-        self.assertIn("482019", message.body)
-        self.assertIn("Monday, 8:00 AM-9:00 AM (Morning)", message.body)
-        self.assertIn("Video meeting IDs and passcodes are shared separately", message.body)
+        with patch(
+            "admissions.notifications.urlopen",
+            side_effect=[token_response, send_response],
+        ) as urlopen:
+            send_admission_confirmation(
+                email="student@example.com",
+                username="student-name",
+                course="Computer Science",
+                section_code="CS-1A",
+                year_level=1,
+                semester="First Semester",
+                subjects=[("CS101", "Introduction to Computing", "482019", 1, "08:00", "09:00", "morning")],
+            )
+
+        self.assertEqual(urlopen.call_count, 2)
+        token_request = urlopen.call_args_list[0].args[0]
+        self.assertEqual(token_request.full_url, "https://oauth2.googleapis.com/token")
+        self.assertEqual(
+            parse_qs(token_request.data.decode("ascii"))["refresh_token"],
+            ["refresh-token"],
+        )
+        send_request = urlopen.call_args_list[1].args[0]
+        self.assertEqual(
+            send_request.full_url,
+            "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        )
+        self.assertEqual(send_request.get_header("Authorization"), "Bearer access-token")
+        raw_message = json.loads(send_request.data.decode("utf-8"))["raw"]
+        raw_message += "=" * (-len(raw_message) % 4)
+        delivered_message = message_from_bytes(base64.urlsafe_b64decode(raw_message))
+        self.assertEqual(delivered_message["To"], "student@example.com")
+        self.assertEqual(delivered_message["From"], "mailer@gmail.com")
+        self.assertEqual(delivered_message["Subject"], "Your MyClaSSes admission is finalized")
+        body = delivered_message.get_payload(decode=True).decode("utf-8")
+        self.assertIn("Computer Science", body)
+        self.assertIn("CS-1A", body)
+        self.assertIn("482019", body)
+        self.assertIn("Monday, 8:00 AM-9:00 AM (Morning)", body)
+        self.assertIn("Video meeting IDs and passcodes are shared separately", body)
+
+    @override_settings(
+        GMAIL_OAUTH_CLIENT_ID="",
+        GMAIL_OAUTH_CLIENT_SECRET="",
+        GMAIL_OAUTH_REFRESH_TOKEN="",
+        GMAIL_FROM_EMAIL="",
+    )
+    def test_gmail_api_requires_oauth_settings(self):
+        with self.assertRaisesMessage(ImproperlyConfigured, "GMAIL_OAUTH_CLIENT_ID"):
+            send_gmail_message(
+                subject="Subject",
+                message="Body",
+                recipient="student@example.com",
+            )
